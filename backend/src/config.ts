@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createHash } from "node:crypto";
 
 function envStr(name: string, devFallback?: string): string {
   const v = process.env[name];
@@ -28,6 +29,12 @@ const jwtRefreshSecret = envStr(
   isProduction ? undefined : "dev_only_change_me_refresh_32chars________",
 );
 
+let fieldEncryptionKeyHex = process.env.FIELD_ENCRYPTION_KEY_HEX?.trim();
+if (!fieldEncryptionKeyHex) {
+  if (isProduction) throw new Error("Missing FIELD_ENCRYPTION_KEY_HEX");
+  fieldEncryptionKeyHex = createHash("sha256").update(jwtAccessSecret).digest("hex");
+}
+
 export const config = {
   port: Number(process.env.PORT || 4000),
   nodeEnv,
@@ -35,7 +42,10 @@ export const config = {
   databaseUrl,
   jwtAccessSecret,
   jwtRefreshSecret,
+  fieldEncryptionKeyHex,
   accessTtlSec: 60 * 15,
   refreshTtlDays: 7,
+  passwordResetTtlMin: Number(process.env.PASSWORD_RESET_TTL_MIN || 60),
+  emailVerifyTtlHours: Number(process.env.EMAIL_VERIFY_TTL_HOURS || 48),
   uploadRoot: process.env.UPLOAD_ROOT || "./uploads",
 };

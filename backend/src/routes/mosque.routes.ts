@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { queryBoolean } from "../lib/query.js";
+import { logAudit } from "../lib/audit.js";
+import { queryBoolean, routeParam } from "../lib/query.js";
+import type { AuthedRequest } from "../middleware/auth.js";
+import { requireAuth } from "../middleware/auth.js";
+import { requireSuperOrMosqueAdminFor } from "../middleware/rbac.js";
+import { upsertMosqueJamaatTimes } from "../services/mosque-admin.service.js";
 import { getPublicMosque, listPublicMosques, nearestMosques } from "../services/mosque.service.js";
 import { getPrayerForMosque, nextPrayerCountdown } from "../services/prayer.service.js";
 
@@ -35,6 +40,25 @@ mosqueRouter.get("/nearby", async (req, res) => {
   if (!q.success) return res.status(400).json({ error: q.error.flatten() });
   const items = await nearestMosques(q.data.lat, q.data.lng, q.data.limit ?? 20);
   res.json({ items, total: items.length });
+});
+
+mosqueRouter.patch("/:id/jamaat-times", requireAuth, requireSuperOrMosqueAdminFor("id"), async (req: AuthedRequest, res) => {
+  try {
+    const mosqueId = routeParam(req.params.id);
+    if (!mosqueId) return res.status(400).json({ error: "ID diperlukan" });
+    const row = await upsertMosqueJamaatTimes(mosqueId, req.body);
+    logAudit({
+      userId: req.userId,
+      action: "JAMAAT_TIMES_UPSERT",
+      entityType: "MosqueJamaatTime",
+      entityId: row?.id ?? null,
+      metadata: { mosqueId, date: (req.body as { date?: string })?.date },
+      ip: req.ip,
+    });
+    res.json(row);
+  } catch (e) {
+    res.status(400).json({ error: e instanceof Error ? e.message : "Ralat" });
+  }
 });
 
 mosqueRouter.get("/:id/prayer-times", async (req, res) => {

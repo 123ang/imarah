@@ -173,6 +173,7 @@ async function main() {
 
   const superRole = await prisma.role.findUniqueOrThrow({ where: { code: "SUPER_ADMIN" } });
   const regRole = await prisma.role.findUniqueOrThrow({ where: { code: "REGISTERED_USER" } });
+  const mosqueRole = await prisma.role.findUniqueOrThrow({ where: { code: "MOSQUE_ADMIN" } });
   const hash = await bcrypt.hash("Imarah2026!", 12);
 
   const admin = await prisma.user.upsert({
@@ -197,6 +198,18 @@ async function main() {
       roles: { create: [{ roleId: regRole.id }] },
     },
     update: {},
+  });
+
+  await prisma.user.upsert({
+    where: { email: "masjid-admin@imarah.local" },
+    create: {
+      email: "masjid-admin@imarah.local",
+      passwordHash: hash,
+      fullName: "Pentadbir Masjid Negara",
+      languagePref: "ms",
+      roles: { create: [{ roleId: mosqueRole.id, mosqueId: masjidKl.id }] },
+    },
+    update: { passwordHash: hash },
   });
 
   await prisma.mosque.upsert({

@@ -48,3 +48,23 @@ export type PrayerMosqueResponse = {
   jamaat: Partial<PrayerOfficial> | null;
   next: { next: string | null; minutesRemaining: number | null } | null;
 };
+
+/** Active prayer zones from `GET /api/prayer-times/zones`. */
+export type PrayerZoneRow = {
+  id: string;
+  stateId: string;
+  zoneCode: string;
+  zoneNameBm: string;
+  zoneNameEn: string | null;
+  isActive: boolean;
+  state: StateRow;
+};
+
+/** Single row `GET /api/prayer-times?zoneId=&date=`. */
+export type PrayerTimeZoneResponse = PrayerOfficial & {
+  id: string;
+  zoneId: string;
+  date: string;
+  source: string;
+  zone: PrayerZoneRow;
+};

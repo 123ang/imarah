@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { parseIsoDateParts, parsePrayerTimeParts, prayerDateForDb } from "../lib/malaysia-time.js";
 import { prisma } from "../lib/prisma.js";
 
@@ -159,6 +160,118 @@ export async function importPrayerCsv(csv: string): Promise<{ imported: number; 
       imported++;
     } catch (e) {
       errors.push(`Line ${lineNo}: ${e instanceof Error ? e.message : "error"}`);
+    }
+  }
+
+  await prisma.importBatch.update({
+    where: { id: batch.id },
+    data: {
+      status: errors.length ? "COMPLETED_WITH_ERRORS" : "COMPLETED",
+      rowCount: imported,
+      errorReport: errors.length ? errors.slice(0, 500).join("\n") : null,
+    },
+  });
+
+  return { imported, errors };
+}
+
+const jsonRowSchema = z.object({
+  zoneCode: z.string().min(1),
+  stateCode: z.string().optional(),
+  date: z.string(),
+  subuh: z.string(),
+  syuruk: z.string(),
+  zohor: z.string(),
+  asar: z.string(),
+  maghrib: z.string(),
+  isyak: z.string(),
+});
+
+const jsonPayloadSchema = z.union([
+  z.array(jsonRowSchema),
+  z.object({ rows: z.array(jsonRowSchema) }),
+]);
+
+/**
+ * JSON body: either `[{ zoneCode, date, ... }]` or `{ rows: [...] }`.
+ * Optional `stateCode` per row disambiguates duplicated zone codes across states.
+ */
+export async function importPrayerJson(payload: unknown): Promise<{ imported: number; errors: string[] }> {
+  const parsedOuter = jsonPayloadSchema.parse(payload);
+  const rows = Array.isArray(parsedOuter) ? parsedOuter : parsedOuter.rows;
+  const errors: string[] = [];
+  if (!rows.length) return { imported: 0, errors: ["Empty JSON"] };
+
+  const batch = await prisma.importBatch.create({
+    data: { type: "PRAYER_TIMES_JSON", status: "RUNNING", rowCount: 0 },
+  });
+
+  let imported = 0;
+  for (const [idx, raw] of rows.entries()) {
+    const lineNo = idx + 1;
+    try {
+      parseIsoDateParts(raw.date);
+      for (const [label, value] of Object.entries({
+        subuh: raw.subuh,
+        syuruk: raw.syuruk,
+        zohor: raw.zohor,
+        asar: raw.asar,
+        maghrib: raw.maghrib,
+        isyak: raw.isyak,
+      })) {
+        try {
+          parsePrayerTimeParts(value);
+        } catch {
+          throw new Error(`${label} must be HH:mm`);
+        }
+      }
+
+      const zones = await prisma.prayerZone.findMany({
+        where: {
+          zoneCode: raw.zoneCode,
+          isActive: true,
+          ...(raw.stateCode ? { state: { code: raw.stateCode } } : {}),
+        },
+        include: { state: true },
+      });
+      if (!zones.length) {
+        errors.push(`Row ${lineNo}: unknown zoneCode ${raw.zoneCode}${raw.stateCode ? ` for ${raw.stateCode}` : ""}`);
+        continue;
+      }
+      if (zones.length > 1) {
+        errors.push(`Row ${lineNo}: ambiguous zoneCode ${raw.zoneCode}; include stateCode`);
+        continue;
+      }
+      const zone = zones[0];
+      const date = prayerDateForDb(raw.date);
+      await prisma.prayerTime.upsert({
+        where: { zoneId_date: { zoneId: zone.id, date } },
+        create: {
+          zoneId: zone.id,
+          date,
+          subuh: raw.subuh,
+          syuruk: raw.syuruk,
+          zohor: raw.zohor,
+          asar: raw.asar,
+          maghrib: raw.maghrib,
+          isyak: raw.isyak,
+          source: "IMPORTED",
+          importBatchId: batch.id,
+        },
+        update: {
+          subuh: raw.subuh,
+          syuruk: raw.syuruk,
+          zohor: raw.zohor,
+          asar: raw.asar,
+          maghrib: raw.maghrib,
+          isyak: raw.isyak,
+          source: "IMPORTED",
+          importBatchId: batch.id,
+        },
+      });
+      imported++;
+    } catch (e) {
+      errors.push(`Row ${lineNo}: ${e instanceof Error ? e.message : "invalid"}`);
     }
   }
 

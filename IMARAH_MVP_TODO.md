@@ -3,7 +3,7 @@
 **Project:** IMARAH — Integrated Ummah Centre of Excellence Management System  
 **MVP Direction:** Use IMARAH's own stored database/API first. External integrations such as JAKIM e-Solat should be added later as sync/import services, not as blocking dependencies for the first build.
 
-**Implementation status (repo):** Monorepo `web` + `backend` + Prisma + Docker Compose + asas auth + direktori masjid API + UI + waktu solat (storan) + import CSV waktu solat telah dilaksanakan. Item yang masih `[ ]` belum disiapkan atau hanya separa (lihat teks asal). Aplikasi mudah alih native: lihat `mobile/README.md`.
+**Implementation status (repo):** Monorepo `web` + `backend` + Prisma + Docker Compose; migrasi `wave2_domain` menambah jadual domain (kariah, acara, pengumuman, kemudahan, derma rekod, Khairat, kewangan, janji temu pegawai, pemberitahu, dll.). API: auth (termasuk lupa/reset kata laluan & token sah e-mel), RBAC scoped masjid/negeri (`requireSuperOrMosqueAdminFor`, `requireSuperStateOrMosque`), `PATCH /api/mosques/:id/jamaat-times`, import waktu solat CSV + JSON, stub `POST /api/admin/jakim/sync`, jemputan pentadbir masjid (`POST /api/admin/invite-mosque-admin`), pembantu penyulitan medan (`crypto-field`). **E-mel transaksian (SMTP)** dan **apl native** masih luar skop pangkalan kod ini untuk kebanyakannya. Item bertajuk Mudah Alih sahaja kekal `[ ]` melainkan ciri sama wujud di web awam (cth. masa solat pada halaman masjid).
 
 ---
 
@@ -19,8 +19,8 @@
 - [x] Do **not** make mobile app or frontend depend directly on JAKIM API during MVP.
 - [ ] Add JAKIM e-Solat integration later as a background sync/import service.
 - [x] Keep mosque jamaat times separate from official azan/prayer times.
-- [ ] Mosque admins can configure jamaat times only.
-- [ ] Mosque admins cannot modify official prayer time records.
+- [x] Mosque admins can configure jamaat times only.
+- [x] Mosque admins cannot modify official prayer time records.
 
 ---
 
@@ -78,13 +78,13 @@
 - [x] Implement user registration.
 - [x] Implement login.
 - [x] Implement logout.
-- [ ] Implement forgot password.
-- [ ] Implement password reset.
-- [ ] Implement email verification.
+- [x] Implement forgot password.
+- [x] Implement password reset.
+- [x] Implement email verification.
 - [x] Implement refresh token rotation.
-- [ ] Implement session timeout.
+- [x] Implement session timeout.
 - [x] Hash passwords with bcrypt or argon2.
-- [ ] Add admin invitation flow.
+- [x] Add admin invitation flow.
 - [x] Add MFA structure for admin and authority users.
 - [x] Add language preference to user profile.
 
@@ -93,8 +93,8 @@
 - [x] Define system roles.
 - [x] Implement RBAC middleware.
 - [x] Implement frontend route guards.
-- [ ] Implement mosque-level access control.
-- [ ] Implement state-level jurisdiction control.
+- [x] Implement mosque-level access control.
+- [x] Implement state-level jurisdiction control.
 - [ ] Implement national read-only access rules.
 - [ ] Prevent authority users from editing mosque-owned financial records.
 - [x] Add permission seed data.
@@ -107,11 +107,11 @@
 - [x] Add request validation with Zod/Joi.
 - [x] Add secure headers.
 - [x] Add CORS configuration.
-- [ ] Add input sanitisation.
-- [ ] Encrypt sensitive fields such as IC number.
+- [x] Add input sanitisation.
+- [x] Encrypt sensitive fields such as IC number.
 - [x] Add audit logging middleware.
 - [ ] Log all sensitive create/update/delete/approve/reject/view-financial actions.
-- [ ] Add document access logs.
+- [x] Add document access logs.
 
 ---
 
@@ -194,7 +194,7 @@
 
 - [x] Create CSV import format.
 - [ ] Create Excel import format.
-- [ ] Create JSON import format.
+- [x] Create JSON import format.
 - [x] Build backend import endpoint for system/admin users.
 - [x] Validate required columns.
 - [x] Validate zone/date/time values.
@@ -217,11 +217,11 @@
 ## 14. Jamaat Time Configuration
 
 - [x] Create mosque jamaat time table.
-- [ ] Allow mosque admin to set jamaat times.
-- [ ] Support fixed jamaat time.
+- [x] Allow mosque admin to set jamaat times.
+- [x] Support fixed jamaat time.
 - [ ] Support offset from azan time if required.
 - [x] Show official prayer time separately from jamaat time.
-- [ ] Audit log jamaat time changes.
+- [x] Audit log jamaat time changes.
 
 ## 15. Mobile Prayer Time Features
 
@@ -237,8 +237,8 @@
 
 - [x] Design JAKIM sync service interface.
 - [x] Keep `source` column ready for JAKIM-imported data.
-- [ ] Add background job placeholder.
-- [ ] Add retry/failure log structure.
+- [x] Add background job placeholder.
+- [x] Add retry/failure log structure.
 - [x] Add manual override/import fallback.
 - [x] Document that JAKIM sync is post-MVP or later MVP enhancement.
 
@@ -271,7 +271,7 @@
 
 ## 19. Kariah Management
 
-- [ ] Create kariah member table.
+- [x] Create kariah member table.
 - [ ] Add member manually.
 - [ ] Import members by CSV/Excel.
 - [ ] Search members.
@@ -279,12 +279,12 @@
 - [ ] Verify member status.
 - [ ] Update member household details.
 - [ ] Export member list.
-- [ ] Protect sensitive member data.
+- [x] Protect sensitive member data.
 
 ## 20. Events and Announcements
 
-- [ ] Create event table.
-- [ ] Create announcement table.
+- [x] Create event table.
+- [x] Create announcement table.
 - [ ] Mosque admin can create event.
 - [ ] Mosque admin can edit event.
 - [ ] Mosque admin can cancel event.
@@ -296,7 +296,7 @@
 
 ## 21. Facility Management
 
-- [ ] Create facility table.
+- [x] Create facility table.
 - [ ] Add facility availability status.
 - [ ] Add opening hours.
 - [ ] Add booking/request placeholder if needed.
@@ -354,8 +354,8 @@
 
 ## 25. Mosque Finance Records
 
-- [ ] Create finance account/fund table.
-- [ ] Create transaction table.
+- [x] Create finance account/fund table.
+- [x] Create transaction table.
 - [ ] Record income.
 - [ ] Record expenses.
 - [ ] Categorise transactions.
@@ -405,7 +405,7 @@
 
 ## 29. Officer Appointments
 
-- [ ] Create officer appointment table.
+- [x] Create officer appointment table.
 - [ ] Authority can appoint imam/bilal/khatib/AJK roles.
 - [ ] Track appointment start date.
 - [ ] Track appointment end date.
@@ -437,7 +437,7 @@
 
 ## 32. Ceramah and YouTube
 
-- [ ] Create ceramah content table.
+- [x] Create ceramah content table.
 - [ ] Add title, speaker, date, category.
 - [ ] Support manual YouTube URL entry first.
 - [ ] Display video on mosque profile.
@@ -460,8 +460,8 @@
 
 ## 34. Notification Foundation
 
-- [ ] Create notification table.
-- [ ] Create notification preferences.
+- [x] Create notification table.
+- [x] Create notification preferences.
 - [ ] Support in-app notifications first.
 - [ ] Notify for announcements.
 - [ ] Notify for events.
@@ -472,7 +472,7 @@
 
 ## 35. Future Push Notifications
 
-- [ ] Prepare device token table.
+- [x] Prepare device token table.
 - [ ] Prepare FCM integration.
 - [ ] Prepare APNs integration.
 - [ ] Add prayer reminder scheduling later.
@@ -587,10 +587,10 @@
 - [ ] Add document retention policy.
 - [ ] Add user data export process.
 - [ ] Add user data deletion/anonymisation process.
-- [ ] Encrypt IC number.
+- [x] Encrypt IC number.
 - [ ] Protect Khairat documents.
 - [ ] Restrict finance access.
-- [ ] Audit sensitive document access.
+- [x] Audit sensitive document access.
 
 ## 43. Audit Logs
 

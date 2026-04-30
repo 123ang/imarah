@@ -1,5 +1,16 @@
 import { prisma } from "./prisma.js";
 
+export function logDocumentAccess(userId: string, fileId: string, action: string): void {
+  void prisma.documentAccessLog.create({ data: { userId, fileId, action } }).catch(() => {});
+  logAudit({
+    userId,
+    action: `DOCUMENT_${action}`,
+    entityType: "FileUpload",
+    entityId: fileId,
+    metadata: { action },
+  });
+}
+
 export function logAudit(input: {
   userId?: string | null;
   action: string;
