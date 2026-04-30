@@ -19,6 +19,12 @@ import { MasjidDirectory } from "./pages/MasjidDirectory";
 import { MosqueAdminJump } from "./pages/MosqueAdminJump";
 import { MosqueJamaatPage } from "./pages/MosqueJamaatPage";
 import { MosquePortalHome } from "./pages/MosquePortalHome";
+import {
+  MosquePortalAnnouncementsPage,
+  MosquePortalEventsPage,
+  MosquePortalFacilitiesPage,
+  MosquePortalProfilePage,
+} from "./pages/MosquePortalScaffoldPages";
 import { Tentang } from "./pages/Tentang";
 import { WaktuSolatPage } from "./pages/WaktuSolatPage";
 import { RequireAuthorityPortal, RequireMosquePortal, RequireSuperAdmin, RequireUser } from "./routes/guards";
@@ -54,6 +60,10 @@ export default function App() {
           <Route path="pentadbir/masjid/:mosqueId" element={<MosqueAdminLayout />}>
             <Route index element={<MosquePortalHome />} />
             <Route path="jamaat" element={<MosqueJamaatPage />} />
+            <Route path="profil" element={<MosquePortalProfilePage />} />
+            <Route path="acara" element={<MosquePortalEventsPage />} />
+            <Route path="pengumuman" element={<MosquePortalAnnouncementsPage />} />
+            <Route path="kemudahan" element={<MosquePortalFacilitiesPage />} />
           </Route>
         </Route>
 

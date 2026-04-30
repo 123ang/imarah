@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { PageMeta } from "../components/PageMeta";
 import { apiGet } from "../lib/api";
@@ -48,28 +49,21 @@ const SLOT_ROWS: { label: MsgKey; field: keyof PrayerTimeZoneResponse }[] = [
   { label: "prayerLabelMaghrib", field: "maghrib" },
   { label: "prayerLabelIsyak", field: "isyak" },
 ];
+const EMPTY_ZONES: PrayerZoneRow[] = [];
 
 export function WaktuSolatPage() {
   const { lang, t } = useLang();
   const [, setSearchParams] = useSearchParams();
 
-  const [zones, setZones] = useState<PrayerZoneRow[]>([]);
-  const [fetchErr, setFetchErr] = useState(false);
-
   const [filterStateId, setFilterStateId] = useState(readInitialFilter);
   const [zoneId, setZoneId] = useState(readInitialZone);
   const [date, setDate] = useState(readInitialDate);
 
-  const [row, setRow] = useState<PrayerTimeZoneResponse | null>(null);
-
-  useEffect(() => {
-    void apiGet<{ items: PrayerZoneRow[] }>("/api/prayer-times/zones")
-      .then((d) => {
-        setZones(d.items);
-        setFetchErr(false);
-      })
-      .catch(() => setFetchErr(true));
-  }, []);
+  const zonesQuery = useQuery({
+    queryKey: ["prayer-zones"],
+    queryFn: () => apiGet<{ items: PrayerZoneRow[] }>("/api/prayer-times/zones"),
+  });
+  const zones = zonesQuery.data?.items ?? EMPTY_ZONES;
 
   useEffect(() => {
     localStorage.setItem(LS_ZONE, zoneId);
@@ -114,18 +108,15 @@ export function WaktuSolatPage() {
     [filteredZones, lang],
   );
 
-  useEffect(() => {
-    if (!zoneId || !date) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale timetable when deps incomplete
-      setRow(null);
-      return;
-    }
-    apiGet<PrayerTimeZoneResponse>(
-      `/api/prayer-times?zoneId=${encodeURIComponent(zoneId)}&date=${encodeURIComponent(date)}`,
-    )
-      .then(setRow)
-      .catch(() => setRow(null));
-  }, [zoneId, date]);
+  const prayerQuery = useQuery({
+    queryKey: ["prayer-zone-day", zoneId, date],
+    queryFn: () =>
+      apiGet<PrayerTimeZoneResponse>(
+        `/api/prayer-times?zoneId=${encodeURIComponent(zoneId)}&date=${encodeURIComponent(date)}`,
+      ),
+    enabled: Boolean(zoneId && date),
+  });
+  const row = prayerQuery.data ?? null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -133,21 +124,10 @@ export function WaktuSolatPage() {
       <h1 className="font-display text-4xl font-semibold text-imarah-deep">{t("prayTitle")}</h1>
       <p className="mt-2 max-w-2xl text-imarah-muted">{t("praySubtitle")}</p>
 
-      {fetchErr ? (
+      {zonesQuery.isError ? (
         <div className="mt-8 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           <p>{t("errGeneric")}</p>
-          <button
-            type="button"
-            className="btn-primary mt-3 text-xs"
-            onClick={() => {
-              void apiGet<{ items: PrayerZoneRow[] }>("/api/prayer-times/zones")
-                .then((d) => {
-                  setZones(d.items);
-                  setFetchErr(false);
-                })
-                .catch(() => setFetchErr(true));
-            }}
-          >
+          <button type="button" className="btn-primary mt-3 text-xs" onClick={() => void zonesQuery.refetch()}>
             {t("btnRetry")}
           </button>
         </div>
@@ -182,9 +162,11 @@ export function WaktuSolatPage() {
         </div>
       )}
 
-      {!fetchErr ? (
+      {!zonesQuery.isError ? (
         !zoneId ? (
           <p className="mt-10 text-imarah-muted">{t("prayZoneNeedsState")}</p>
+        ) : prayerQuery.isLoading ? (
+          <p className="mt-10 text-imarah-muted">{t("detailLoading")}</p>
         ) : !row ? (
           <p className="mt-10 text-imarah-muted">{t("prayNothing")}</p>
         ) : (

@@ -2,6 +2,8 @@
 
 **Spesifikasi:** `IMARAH_DEVELOPER_MVP.md` · **Senarai kerja penuh:** `IMARAH_MVP_TODO.md` · **Fokus web sahaja:** `IMARAH_WEB_TODO.md`
 
+**Deploy VPS (domain + port 3017/4017):** `DEPLOY_VPS.md`
+
 Monorepo: `web` (React + Vite + Tailwind), `backend` (Express + TypeScript + Prisma), `mobile` (README untuk native Swift/Java).
 
 ## Prasyarat

@@ -23,9 +23,9 @@ export function configureApiAuth(getAccess: TokenGetter, refresh?: RefreshFn): v
   tryRefresh = refresh ?? null;
 }
 
-async function authHeader(): Promise<Record<string, string>> {
+async function applyAuthHeader(headers: Headers): Promise<void> {
   const t = await accessTokenGetter();
-  return t ? { Authorization: `Bearer ${t}` } : {};
+  if (t) headers.set("Authorization", `Bearer ${t}`);
 }
 
 async function readErrorMessage(res: Response): Promise<string> {
@@ -40,7 +40,7 @@ export async function apiRequest<T>(
   const { auth, headers: hIn, ...rest } = init ?? {};
   const headers = new Headers(hIn);
   headers.set("Accept", "application/json");
-  if (auth) Object.assign(headers, await authHeader());
+  if (auth) await applyAuthHeader(headers);
 
   const url = apiPath(path);
   let res = await fetch(url, { ...rest, headers });
@@ -50,7 +50,7 @@ export async function apiRequest<T>(
     if (ok) {
       const h2 = new Headers(hIn);
       h2.set("Accept", "application/json");
-      Object.assign(h2, await authHeader());
+      await applyAuthHeader(h2);
       res = await fetch(url, { ...rest, headers: h2 });
     }
   }

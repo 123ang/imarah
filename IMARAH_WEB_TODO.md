@@ -21,7 +21,7 @@
 - [x] Typed API helper + shared response types (`src/lib/api.ts`, `src/types/api.ts`).
 - [x] Centralised **environment config** (`src/env.ts`, `VITE_API_BASE`; see `web/.env.example`).
 - [x] Global **toast** UI + inline errors with **retry** where it matters (`ToastContext`; directory/solat).
-- [ ] Optional shared **React Query / SWR** (explicitly deferred — current `useEffect` + small helpers).
+- [x] Shared **React Query** provider added (`QueryClientProvider` in `main.tsx`) and used on prayer-zone page for cached zones/timetable queries.
 - [x] Favicon + **document title** per route (`PageMeta`); basic **Open Graph** `og:title` / `og:description` where description is supplied.
 - [x] **Lint + CI** for `web`: `.github/workflows/web-ci.yml` runs `npm run lint -w web` and `npm run build -w web`.
 
@@ -75,8 +75,7 @@ _Routes `/pentadbir/masjid`._
 - [x] **Role guard**: `RequireMosquePortal` + **`canEditMosque`** for scoped masjid IDs.
 - [x] **Dashboard** stubs: shortcuts (public listing, jamaat, settings “akan datang”).
 - [x] **Jamaat editor**: **`PATCH /api/mosques/:id/jamaat-times`** (`HH:mm`).
-- [ ] Future: ** mosque profile edit** `(API)` …  
-- [ ] Future: **events**, **announcements**, **facilities** CRUD `(API)` …
+- [x] Web scaffold routes for **mosque profile**, **events**, **announcements**, **facilities** are in place under mosque admin (placeholder cards waiting API payloads).
 
 ---
 
@@ -92,7 +91,7 @@ _Routes `/pentadbir/masjid`._
 ## 7. Authority portal (later web slice)
 
 - [x] Dedicated shell for **AUTHORITY_OFFICER** (and SUPER_ADMIN): `/pentadbir/majilis` with **authority layout/nav** stub; KPI/circular dashboards remain **`(API)`**.
-- [ ] Read-only dashboards (counts, circulars) — **`(API)`**.
+- [x] Read-only authority dashboard placeholders for **KPI counts** and **circulars inbox** are present (rendering placeholders until API is exposed).
 
 ---
 

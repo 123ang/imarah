@@ -56,6 +56,18 @@ export function MosqueAdminLayout() {
           <NavLink className={link} to={`/pentadbir/masjid/${mosqueId}/jamaat`}>
             {t("mosqueJamaat")}
           </NavLink>
+          <NavLink className={link} to={`/pentadbir/masjid/${mosqueId}/profil`}>
+            {t("mosqueProfile")}
+          </NavLink>
+          <NavLink className={link} to={`/pentadbir/masjid/${mosqueId}/acara`}>
+            {t("mosqueEvents")}
+          </NavLink>
+          <NavLink className={link} to={`/pentadbir/masjid/${mosqueId}/pengumuman`}>
+            {t("mosqueAnnouncements")}
+          </NavLink>
+          <NavLink className={link} to={`/pentadbir/masjid/${mosqueId}/kemudahan`}>
+            {t("mosqueFacilities")}
+          </NavLink>
         </nav>
         <div className="min-h-[200px]">
           <Outlet />
