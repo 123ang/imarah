@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-svh bg-imarah-light font-sans text-imarah-ink antialiased;
+    background-image: theme(backgroundImage.pattern-islamic);
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply flex flex-col gap-1 text-sm font-medium text-imarah-ink;
+  }
+  .field-control {
+    @apply w-full rounded-lg border border-imarah-border bg-white px-3 py-2 text-imarah-ink outline-none ring-imarah-primary/30 focus:ring-2;
+  }
+  .btn-primary {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-lg bg-imarah-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-imarah-primaryhover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}

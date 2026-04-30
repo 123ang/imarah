@@ -1,0 +1,624 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MosqueType {
+  MASJID
+  SURAU
+}
+
+enum PublicMosqueStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  UNDER_REVIEW
+}
+
+enum PrayerTimeSource {
+  MANUAL
+  IMPORTED
+  JAKIM_FUTURE
+}
+
+enum KhairatApplicationStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_INFO
+}
+
+enum DonationRecordStatus {
+  RECORDED
+  PENDING_GATEWAY
+  REFUNDED
+}
+
+enum FinancialTxnType {
+  INCOME
+  EXPENSE
+  ADJUSTMENT
+}
+
+enum CommunityPostStatus {
+  PENDING
+  APPROVED
+  REMOVED
+}
+
+enum JakimSyncJobStatus {
+  IDLE
+  RUNNING
+  FAILED
+  SUCCESS
+}
+
+model State {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  nameBm       String
+  nameEn       String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  districts    District[]
+  prayerZones  PrayerZone[]
+  mosques      Mosque[]
+}
+
+model District {
+  id        String   @id @default(cuid())
+  stateId   String
+  state     State    @relation(fields: [stateId], references: [id])
+  nameBm    String
+  nameEn    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  mosques   Mosque[]
+
+  @@index([stateId])
+}
+
+model PrayerZone {
+  id               String       @id @default(cuid())
+  stateId          String
+  state            State        @relation(fields: [stateId], references: [id])
+  zoneCode         String
+  zoneNameBm       String
+  zoneNameEn       String?
+  districtsCovered String?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  prayerTimes      PrayerTime[]
+  mosques          Mosque[]
+
+  @@unique([stateId, zoneCode])
+}
+
+model ImportBatch {
+  id           String        @id @default(cuid())
+  type         String
+  status       String
+  rowCount     Int           @default(0)
+  errorReport  String?       @db.Text
+  createdAt    DateTime      @default(now())
+  prayerTimes  PrayerTime[]
+}
+
+model PrayerTime {
+  id            String             @id @default(cuid())
+  zoneId        String
+  zone          PrayerZone         @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  date          DateTime           @db.Date
+  subuh         String
+  syuruk        String
+  zohor         String
+  asar          String
+  maghrib       String
+  isyak         String
+  source        PrayerTimeSource   @default(IMPORTED)
+  importBatchId String?
+  importBatch   ImportBatch?       @relation(fields: [importBatchId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@unique([zoneId, date])
+  @@index([date])
+}
+
+model Mosque {
+  id                        String              @id @default(cuid())
+  type                      MosqueType
+  nameBm                    String
+  nameEn                    String?
+  addressLine1              String
+  addressLine2              String?
+  postcode                  String
+  districtId                String
+  district                  District            @relation(fields: [districtId], references: [id])
+  stateId                   String
+  state                     State               @relation(fields: [stateId], references: [id])
+  latitude                  Decimal?            @db.Decimal(10, 7)
+  longitude                 Decimal?            @db.Decimal(10, 7)
+  phone                     String?
+  email                     String?
+  websiteUrl                String?
+  socialLinksJson           Json?
+  kariahBoundaryDescription String?             @db.Text
+  malePrayerCapacity        Int?
+  femalePrayerCapacity      Int?
+  parkingCapacity             Int?
+  facilitiesJson            Json?
+  okuAccess                 Boolean             @default(false)
+  khairatAvailable          Boolean             @default(false)
+  imamContactsJson          Json?
+  publicStatus              PublicMosqueStatus  @default(PENDING)
+  prayerZoneId              String?
+  prayerZone                PrayerZone?         @relation(fields: [prayerZoneId], references: [id])
+  deletedAt                 DateTime?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  jamaatTimes               MosqueJamaatTime[]
+  events                    Event[]
+  announcements             Announcement[]
+  donations                 DonationTransaction[]
+  kariahMembers             KaraiahMember[]
+  facilityRows              Facility[]
+  khairatSchemes            KhairatScheme[]
+  financialAccounts         FinancialAccount[]
+  appointments              OfficerAppointment[]
+  ceramahVideos             CeramahVideo[]
+  floorPlans                MosqueFloorPlan[]
+  communityPosts            CommunityPost[]
+  statutorySubmissions      StatutorySubmission[]
+  circularRecipients        CircularRecipient[]
+  files                     FileUpload[]        @relation("MosqueFiles")
+  favoritedBy               UserMosqueFavorite[]
+
+  @@index([stateId, districtId])
+  @@index([publicStatus])
+}
+
+model MosqueJamaatTime {
+  id        String   @id @default(cuid())
+  mosqueId  String
+  mosque    Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  subuh     String?
+  syuruk    String?
+  zohor     String?
+  asar      String?
+  maghrib   String?
+  isyak     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mosqueId, date])
+}
+
+model Role {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  nameBm    String
+  nameEn    String
+  userRoles UserRole[]
+}
+
+model User {
+  id              String         @id @default(cuid())
+  email           String         @unique
+  passwordHash    String
+  fullName        String
+  languagePref    String         @default("ms")
+  mfaEnabled      Boolean        @default(false)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+  roles              UserRole[]
+  refreshTokens      RefreshToken[]
+  auditLogs          AuditLog[]
+  donated            DonationTransaction[]   @relation("DonorUser")
+  khairatApps        KhairatApplication[]
+  notifications      Notification[]
+  notificationPref   NotificationPreference?
+  passwordResets     PasswordResetToken[]
+  emailVerifications EmailVerificationToken[]
+  deviceTokens       DevicePushToken[]
+  communityAuthored  CommunityPost[]         @relation("PostAuthor")
+  favorites          UserMosqueFavorite[]
+  documentAccessLogs DocumentAccessLog[]
+  financeRecorded    FinancialTransaction[] @relation("FinanceRecorder")
+  donationsRecorded  DonationTransaction[] @relation("DonationRecorder")
+  circularsCreated   Circular[]
+}
+
+model UserRole {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId   String
+  role     Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  mosqueId String?
+  stateId  String?
+
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  action       String
+  entityType   String
+  entityId     String?
+  metadataJson Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model FileUpload {
+  id             String   @id @default(cuid())
+  mosqueId       String?
+  mosque         Mosque?  @relation("MosqueFiles", fields: [mosqueId], references: [id], onDelete: Cascade)
+  logicalKey     String
+  storagePath    String
+  mimeType       String
+  sizeBytes      Int
+  isPublic       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  eventsFlyer    Event[]
+  circularAttach Circular?
+  floorPlans     MosqueFloorPlan[]
+
+  @@index([mosqueId])
+}
+
+model KaraiahMember {
+  id         String   @id @default(cuid())
+  mosqueId   String
+  mosque     Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  fullName   String
+  phone      String?
+  email      String?
+  icEncrypted String? @db.Text
+  householdJson Json?
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([mosqueId])
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  mosqueId    String
+  mosque      Mosque    @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  titleBm     String
+  titleEn     String?
+  description String?   @db.Text
+  startsAt    DateTime
+  endsAt      DateTime?
+  location    String?
+  published   Boolean   @default(false)
+  cancelled   Boolean   @default(false)
+  flyerFileId String?   @unique
+  flyerFile   FileUpload? @relation(fields: [flyerFileId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([mosqueId])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  mosque      Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  title       String
+  body        String   @db.Text
+  pinned      Boolean  @default(false)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([mosqueId])
+}
+
+model Facility {
+  id            String   @id @default(cuid())
+  mosqueId      String
+  mosque        Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  nameBm        String
+  category      String
+  isAvailable   Boolean  @default(true)
+  openingHoursJson Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([mosqueId])
+}
+
+model KhairatScheme {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  mosque      Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  nameBm      String
+  description String?  @db.Text
+  annualFeeMyr Decimal @db.Decimal(12, 2) @default(0)
+  active      Boolean  @default(true)
+  applications KhairatApplication[]
+
+  @@index([mosqueId])
+}
+
+model KhairatApplication {
+  id           String                  @id @default(cuid())
+  schemeId     String
+  scheme       KhairatScheme           @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status       KhairatApplicationStatus @default(PENDING_REVIEW)
+  payloadJson  Json
+  adminNote    String?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([schemeId])
+  @@index([userId])
+}
+
+model DonationTransaction {
+  id           String               @id @default(cuid())
+  mosqueId     String
+  mosque       Mosque               @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  userId       String?
+  donor        User?                @relation("DonorUser", fields: [userId], references: [id])
+  amountMyr    Decimal              @db.Decimal(12, 2)
+  anonymous    Boolean              @default(false)
+  status       DonationRecordStatus   @default(RECORDED)
+  receiptCode  String?
+  recordedById String?
+  recorder     User?                @relation("DonationRecorder", fields: [recordedById], references: [id])
+  createdAt    DateTime             @default(now())
+
+  @@index([mosqueId])
+  @@index([userId])
+}
+
+model FinancialAccount {
+  id           String                 @id @default(cuid())
+  mosqueId     String
+  mosque       Mosque                 @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  nameBm       String
+  currency     String                 @default("MYR")
+  createdAt    DateTime               @default(now())
+  transactions FinancialTransaction[]
+
+  @@index([mosqueId])
+}
+
+model FinancialTransaction {
+  id               String            @id @default(cuid())
+  accountId        String
+  account          FinancialAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type             FinancialTxnType
+  category         String
+  amountMyr        Decimal           @db.Decimal(12, 2)
+  description      String?
+  voidedAt         DateTime?
+  adjustmentOfId   String?
+  recorderId       String?
+  recorder         User?             @relation("FinanceRecorder", fields: [recorderId], references: [id])
+  createdAt        DateTime          @default(now())
+
+  @@index([accountId])
+}
+
+model OfficerAppointment {
+  id          String   @id @default(cuid())
+  mosqueId    String
+  mosque      Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  roleType    String
+  personName  String
+  startDate   DateTime @db.Date
+  endDate     DateTime? @db.Date
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([mosqueId])
+}
+
+model Circular {
+  id              String   @id @default(cuid())
+  createdById     String
+  createdBy       User     @relation(fields: [createdById], references: [id])
+  title           String
+  body            String   @db.Text
+  targetStateId   String?
+  targetMosqueId  String?
+  attachmentFileId String? @unique
+  attachment      FileUpload? @relation(fields: [attachmentFileId], references: [id])
+  archived        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  recipients      CircularRecipient[]
+}
+
+model CircularRecipient {
+  id         String    @id @default(cuid())
+  circularId String
+  circular   Circular  @relation(fields: [circularId], references: [id], onDelete: Cascade)
+  mosqueId   String
+  mosque     Mosque    @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  readAt     DateTime?
+
+  @@unique([circularId, mosqueId])
+  @@index([mosqueId])
+}
+
+model CeramahVideo {
+  id         String   @id @default(cuid())
+  mosqueId   String
+  mosque     Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  title      String
+  speaker    String?
+  heldAt     DateTime?
+  category   String?
+  youtubeUrl String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([mosqueId])
+}
+
+model MosqueFloorPlan {
+  id                  String     @id @default(cuid())
+  mosqueId            String
+  mosque              Mosque     @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  fileId              String
+  file                FileUpload @relation(fields: [fileId], references: [id])
+  label               String
+  okuRouteHighlight   Boolean    @default(false)
+  capacityNotes       String?
+  zonesJson           Json?
+  createdAt           DateTime   @default(now())
+
+  @@index([mosqueId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  userId          String  @id
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prayerReminders Boolean @default(false)
+  announcements   Boolean @default(true)
+  events          Boolean @default(true)
+  khairat         Boolean @default(true)
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([userId])
+}
+
+model DevicePushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  String
+  token     String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, platform])
+}
+
+model CommunityPost {
+  id         String               @id @default(cuid())
+  mosqueId   String
+  mosque     Mosque               @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User                 @relation("PostAuthor", fields: [authorId], references: [id])
+  body       String               @db.Text
+  status     CommunityPostStatus  @default(PENDING)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([mosqueId])
+}
+
+model JakimSyncJob {
+  id         String               @id @default(cuid())
+  status     JakimSyncJobStatus   @default(IDLE)
+  lastRunAt  DateTime?
+  nextRunAt  DateTime?
+  lastError  String?              @db.Text
+  createdAt  DateTime             @default(now())
+}
+
+model StatutorySubmission {
+  id        String   @id @default(cuid())
+  mosqueId  String
+  mosque    Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  title     String
+  status    String   @default("DRAFT")
+  payloadJson Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mosqueId])
+}
+
+model UserMosqueFavorite {
+  userId    String
+  mosqueId  String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mosque    Mosque @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+
+  @@id([userId, mosqueId])
+}
+
+model DocumentAccessLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileId      String
+  action      String
+  createdAt   DateTime @default(now())
+
+  @@index([fileId])
+}
+
+model SystemSetting {
+  key       String   @id
+  valueJson Json
+  updatedAt DateTime @updatedAt
+}

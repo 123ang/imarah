@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: imarah-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: imarah
+      POSTGRES_PASSWORD: imarah_dev
+      POSTGRES_DB: imarah
+    ports:
+      - "55433:5432"
+    volumes:
+      - imarah_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imarah -d imarah"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: imarah-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - imarah_redis_data:/data
+
+volumes:
+  imarah_pg_data:
+  imarah_redis_data:

@@ -1,0 +1,231 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MosqueType {
+  MASJID
+  SURAU
+}
+
+enum PublicMosqueStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  UNDER_REVIEW
+}
+
+enum PrayerTimeSource {
+  MANUAL
+  IMPORTED
+  JAKIM_FUTURE
+}
+
+model State {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  nameBm       String
+  nameEn       String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  districts    District[]
+  prayerZones  PrayerZone[]
+  mosques      Mosque[]
+}
+
+model District {
+  id        String   @id @default(cuid())
+  stateId   String
+  state     State    @relation(fields: [stateId], references: [id])
+  nameBm    String
+  nameEn    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  mosques   Mosque[]
+
+  @@index([stateId])
+}
+
+model PrayerZone {
+  id               String       @id @default(cuid())
+  stateId          String
+  state            State        @relation(fields: [stateId], references: [id])
+  zoneCode         String
+  zoneNameBm       String
+  zoneNameEn       String?
+  districtsCovered String?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  prayerTimes      PrayerTime[]
+  mosques          Mosque[]
+
+  @@unique([stateId, zoneCode])
+}
+
+model ImportBatch {
+  id           String        @id @default(cuid())
+  type         String
+  status       String
+  rowCount     Int           @default(0)
+  errorReport  String?       @db.Text
+  createdAt    DateTime      @default(now())
+  prayerTimes  PrayerTime[]
+}
+
+model PrayerTime {
+  id            String             @id @default(cuid())
+  zoneId        String
+  zone          PrayerZone         @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  date          DateTime           @db.Date
+  subuh         String
+  syuruk        String
+  zohor         String
+  asar          String
+  maghrib       String
+  isyak         String
+  source        PrayerTimeSource   @default(IMPORTED)
+  importBatchId String?
+  importBatch   ImportBatch?       @relation(fields: [importBatchId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@unique([zoneId, date])
+  @@index([date])
+}
+
+model Mosque {
+  id                        String              @id @default(cuid())
+  type                      MosqueType
+  nameBm                    String
+  nameEn                    String?
+  addressLine1              String
+  addressLine2              String?
+  postcode                  String
+  districtId                String
+  district                  District            @relation(fields: [districtId], references: [id])
+  stateId                   String
+  state                     State               @relation(fields: [stateId], references: [id])
+  latitude                  Decimal?            @db.Decimal(10, 7)
+  longitude                 Decimal?            @db.Decimal(10, 7)
+  phone                     String?
+  email                     String?
+  websiteUrl                String?
+  socialLinksJson           Json?
+  kariahBoundaryDescription String?             @db.Text
+  malePrayerCapacity        Int?
+  femalePrayerCapacity      Int?
+  parkingCapacity             Int?
+  facilitiesJson            Json?
+  okuAccess                 Boolean             @default(false)
+  khairatAvailable          Boolean             @default(false)
+  imamContactsJson          Json?
+  publicStatus              PublicMosqueStatus  @default(PENDING)
+  prayerZoneId              String?
+  prayerZone                PrayerZone?         @relation(fields: [prayerZoneId], references: [id])
+  deletedAt                 DateTime?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  jamaatTimes               MosqueJamaatTime[]
+
+  @@index([stateId, districtId])
+  @@index([publicStatus])
+}
+
+model MosqueJamaatTime {
+  id        String   @id @default(cuid())
+  mosqueId  String
+  mosque    Mosque   @relation(fields: [mosqueId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  subuh     String?
+  syuruk    String?
+  zohor     String?
+  asar      String?
+  maghrib   String?
+  isyak     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mosqueId, date])
+}
+
+model Role {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  nameBm    String
+  nameEn    String
+  userRoles UserRole[]
+}
+
+model User {
+  id              String         @id @default(cuid())
+  email           String         @unique
+  passwordHash    String
+  fullName        String
+  languagePref    String         @default("ms")
+  mfaEnabled      Boolean        @default(false)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+  roles           UserRole[]
+  refreshTokens   RefreshToken[]
+  auditLogs       AuditLog[]
+}
+
+model UserRole {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId   String
+  role     Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  mosqueId String?
+  stateId  String?
+
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  action       String
+  entityType   String
+  entityId     String?
+  metadataJson Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model FileUpload {
+  id          String   @id @default(cuid())
+  mosqueId    String?
+  logicalKey  String
+  storagePath String
+  mimeType    String
+  sizeBytes   Int
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([mosqueId])
+}
